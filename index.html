@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find Your Representatives – Institute for the Public Good</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ipg-navy: #0d2340;
+    --ipg-teal: #00a89c;
+    --ipg-teal-light: #e6f7f6;
+    --ipg-gray: #f4f6f8;
+    --ipg-border: #d0d8e4;
+    --ipg-text: #1a2b3c;
+    --ipg-muted: #6b7f93;
+    --dem: #1a6bbf;
+    --rep: #c0392b;
+    --radius: 8px;
+    --shadow: 0 2px 12px rgba(13,35,64,0.10);
+  }
+  html, body { width: 100%; height: 100%; margin: 0; padding: 0; font-family: 'Sora', sans-serif; background: var(--ipg-gray); color: var(--ipg-text); overflow: hidden; }
+  .app-wrapper { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
+  .header { background: var(--ipg-navy); padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 3px solid var(--ipg-teal); flex-shrink: 0; position: relative; z-index: 10; }
+  .header-logo { width: 32px; height: 32px; background: var(--ipg-teal); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-weight: 500; color: white; font-size: 11px; flex-shrink: 0; }
+  .header-title { color: white; font-size: 15px; font-weight: 600; }
+  .header-sub { color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 300; margin-top: 1px; }
+  .app-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+  .sidebar { width: 320px; flex-shrink: 0; background: white; border-right: 1px solid var(--ipg-border); display: flex; flex-direction: column; overflow: hidden; position: relative; z-index: 5; }
+  .search-section { padding: 14px 16px; border-bottom: 1px solid var(--ipg-border); flex-shrink: 0; position: relative; z-index: 1000; }
+  .search-label { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--ipg-muted); margin-bottom: 8px; }
+  .search-row { display: flex; gap: 7px; }
+  #addressInput { flex: 1; padding: 9px 12px; border: 1.5px solid var(--ipg-border); border-radius: var(--radius); font-family: 'Sora', sans-serif; font-size: 13px; color: var(--ipg-text); outline: none; transition: border-color 0.2s; min-width: 0; }
+  #addressInput:focus { border-color: var(--ipg-teal); }
+  .search-btn { background: var(--ipg-teal); color: white; border: none; border-radius: var(--radius); padding: 9px 13px; font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; flex-shrink: 0; }
+  .search-btn:hover { background: #008c82; }
+  .pac-container { z-index: 9999 !important; font-family: 'Sora', sans-serif !important; border: 1.5px solid var(--ipg-teal) !important; border-top: none !important; border-radius: 0 0 var(--radius) var(--radius) !important; box-shadow: 0 4px 16px rgba(13,35,64,0.15) !important; pointer-events: all !important; }
+  .pac-item { font-size: 12px !important; padding: 8px 12px !important; cursor: pointer !important; line-height: 1.4 !important; }
+  .pac-item:hover { background: var(--ipg-teal-light) !important; }
+  .pac-item-selected { background: var(--ipg-teal-light) !important; }
+  .pac-matched { color: var(--ipg-teal) !important; font-weight: 600 !important; }
+  .pac-icon { display: none !important; }
+  .layer-tabs { display: flex; border-bottom: 1px solid var(--ipg-border); background: var(--ipg-gray); padding: 0 10px; overflow-x: auto; flex-shrink: 0; }
+  .layer-tab { padding: 9px 10px; font-size: 10px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--ipg-muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; background: none; border-top: none; border-left: none; border-right: none; font-family: 'Sora', sans-serif; }
+  .layer-tab:hover { color: var(--ipg-teal); }
+  .layer-tab.active { color: var(--ipg-teal); border-bottom-color: var(--ipg-teal); }
+  .results-section { flex: 1; overflow-y: auto; padding: 14px 16px; }
+  .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; text-align: center; padding: 30px 16px; }
+  .placeholder-icon { width: 48px; height: 48px; background: var(--ipg-teal-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .placeholder h3 { font-size: 14px; font-weight: 600; }
+  .placeholder p { font-size: 12px; color: var(--ipg-muted); line-height: 1.5; }
+  .rep-card { background: white; border: 1.5px solid var(--ipg-border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; transition: border-color 0.2s, box-shadow 0.2s; }
+  .rep-card:hover { border-color: var(--ipg-teal); box-shadow: var(--shadow); }
+  .rep-card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .rep-avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--ipg-gray); border: 2px solid var(--ipg-border); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .rep-info { flex: 1; }
+  .rep-name { font-size: 14px; font-weight: 700; color: var(--ipg-text); line-height: 1.2; }
+  .rep-title { font-size: 11px; color: var(--ipg-muted); margin-top: 2px; }
+  .party-badge { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 600; margin-top: 4px; font-family: 'IBM Plex Mono', monospace; }
+  .party-badge.D { background: #dbeafe; color: var(--dem); }
+  .party-badge.R { background: #fee2e2; color: var(--rep); }
+  .rep-district { background: var(--ipg-teal-light); border-radius: 6px; padding: 7px 10px; margin-bottom: 8px; font-size: 11px; }
+  .rep-district strong { font-family: 'IBM Plex Mono', monospace; color: var(--ipg-teal); }
+  .rep-contacts { display: flex; flex-direction: column; gap: 4px; }
+  .rep-contact-link { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--ipg-teal); text-decoration: none; padding: 3px 0; }
+  .rep-contact-link:hover { color: #008c82; }
+  .rep-contact-link .icon { font-size: 12px; width: 14px; text-align: center; }
+  .status-bar { padding: 6px 16px; background: var(--ipg-gray); border-top: 1px solid var(--ipg-border); font-size: 10px; color: var(--ipg-muted); font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
+  #map { flex: 1; min-width: 0; min-height: 0; }
+  .msg-loading, .msg-error { padding: 10px 12px; border-radius: var(--radius); font-size: 12px; margin-bottom: 10px; }
+  .msg-loading { background: var(--ipg-teal-light); color: var(--ipg-teal); display: flex; align-items: center; gap: 8px; }
+  .msg-error { background: #fee2e2; color: #c0392b; }
+  .spinner { width: 12px; height: 12px; border: 2px solid rgba(0,168,156,0.3); border-top-color: var(--ipg-teal); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="app-wrapper">
+  <div class="header">
+    <div class="header-logo">IPG</div>
+    <div>
+      <div class="header-title">Find Your Representatives</div>
+      <div class="header-sub">Institute for the Public Good — Illinois</div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="sidebar">
+      <div class="search-section">
+        <div class="search-label">Enter Your Address</div>
+        <div class="search-row">
+          <input type="text" id="addressInput" placeholder="123 Main St, Chicago, IL" autocomplete="off" />
+          <button class="search-btn" onclick="doSearch()">Search</button>
+        </div>
+      </div>
+      <div class="layer-tabs">
+        <button class="layer-tab active" onclick="switchLayer('house',this)">IL House</button>
+        <button class="layer-tab" onclick="switchLayer('senate',this)">IL Senate</button>
+        <button class="layer-tab" onclick="switchLayer('congress',this)">Congress</button>
+        <button class="layer-tab" onclick="switchLayer('ward',this)">Chi. Wards</button>
+        <button class="layer-tab" onclick="switchLayer('school',this)">School Board</button>
+      </div>
+      <div class="results-section" id="resultsSection">
+        <div class="placeholder">
+          <div class="placeholder-icon">📍</div>
+          <h3>Enter your address to get started</h3>
+          <p>We'll find your IL House, Senate, Congressional, Chicago Ward, and School Board representatives.</p>
+        </div>
+      </div>
+      <div class="status-bar" id="statusBar">Ready</div>
+    </div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDGsCeSPygg96i3hZDmWeqIvupaN6FDhRk&libraries=geometry,places"></script>
+<script>
+// ── FULL ROSTER DATA ──────────────────────────────────────────────────────────
+const REPS = {
+
+  // Illinois House of Representatives - 104th General Assembly (all 118 members)
+  house: {
+    1:  { name: "Aarón M. Ortíz", party: "D", district: "1st District", phone: "(217) 782-0050", website: "https://www.ilga.gov/House/Members/Details/3358" },
+    2:  { name: "Elizabeth \"Lisa\" Hernandez", party: "D", district: "2nd District", phone: "(217) 782-8173", website: "https://www.ilga.gov/House/Members/Details/3273" },
+    3:  { name: "Eva-Dina Delgado", party: "D", district: "3rd District", phone: "(217) 782-4535", website: "https://www.ilga.gov/House/Members/Details/3373" },
+    4:  { name: "Lilian Jiménez", party: "D", district: "4th District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3417" },
+    5:  { name: "Kimberly Du Buclet", party: "D", district: "5th District", phone: "(217) 782-8077", website: "https://www.ilga.gov/House/Members/Details/3441" },
+    6:  { name: "Sonya M. Harper", party: "D", district: "6th District", phone: "(217) 782-0515", website: "https://www.ilga.gov/House/Members/Details/3314" },
+    7:  { name: "Emanuel \"Chris\" Welch", party: "D", district: "7th District", phone: "(217) 782-5350", website: "https://www.ilga.gov/House/Members/Details/3298" },
+    8:  { name: "La Shawn K. Ford", party: "D", district: "8th District", phone: "(217) 782-5962", website: "https://www.ilga.gov/House/Members/Details/3272" },
+    9:  { name: "Yolonda Morris", party: "D", district: "9th District", phone: "(217) 782-3835", website: "https://www.ilga.gov/House/Members/Details/3444" },
+    10: { name: "Jawaharial Williams", party: "D", district: "10th District", phone: "(217) 782-0425", website: "https://www.ilga.gov/House/Members/Details/3368" },
+    11: { name: "Ann M. Williams", party: "D", district: "11th District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3286" },
+    12: { name: "Margaret Croke", party: "D", district: "12th District", phone: "(217) 782-1252", website: "https://www.ilga.gov/House/Members/Details/3384" },
+    13: { name: "Hoan Huynh", party: "D", district: "13th District", phone: "(217) 782-5975", website: "https://www.ilga.gov/House/Members/Details/3418" },
+    14: { name: "Kelly M. Cassidy", party: "D", district: "14th District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3288" },
+    15: { name: "Michael J. Kelly", party: "D", district: "15th District", phone: "(217) 782-3835", website: "https://www.ilga.gov/House/Members/Details/3402" },
+    16: { name: "Kevin John Olickal", party: "D", district: "16th District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3419" },
+    17: { name: "Jennifer Gong-Gershowitz", party: "D", district: "17th District", phone: "(847) 657-1776", website: "https://www.ilga.gov/House/Members/Details/3352" },
+    18: { name: "Robyn Gabel", party: "D", district: "18th District", phone: "(847) 491-6400", website: "https://www.ilga.gov/House/Members/Details/3278" },
+    19: { name: "Lindsey LaPointe", party: "D", district: "19th District", phone: "(773) 763-3166", website: "https://www.ilga.gov/House/Members/Details/3371" },
+    20: { name: "Brad Stephens", party: "R", district: "20th District", phone: "(217) 782-0515", website: "https://www.ilga.gov/House/Members/Details/3370" },
+    21: { name: "Abdelnasser Rashid", party: "D", district: "21st District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3420" },
+    22: { name: "Angelica Guerrero-Cuellar", party: "D", district: "22nd District", phone: "(217) 782-4535", website: "https://www.ilga.gov/House/Members/Details/3400" },
+    23: { name: "Edgar González, Jr.", party: "D", district: "23rd District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3374" },
+    24: { name: "Theresa Mah", party: "D", district: "24th District", phone: "(217) 782-1252", website: "https://www.ilga.gov/House/Members/Details/3321" },
+    25: { name: "Curtis J. Tarver, II", party: "D", district: "25th District", phone: "(217) 782-0010", website: "https://www.ilga.gov/House/Members/Details/3355" },
+    26: { name: "Kam Buckner", party: "D", district: "26th District", phone: "(217) 782-5350", website: "https://www.ilga.gov/House/Members/Details/3366" },
+    27: { name: "Justin Slaughter", party: "D", district: "27th District", phone: "(217) 782-0010", website: "https://www.ilga.gov/House/Members/Details/3320" },
+    28: { name: "Robert \"Bob\" Rita", party: "D", district: "28th District", phone: "(708) 385-1707", website: "https://www.ilga.gov/House/Members/Details/3267" },
+    29: { name: "Thaddeus Jones", party: "D", district: "29th District", phone: "(708) 730-4330", website: "https://www.ilga.gov/House/Members/Details/3283" },
+    30: { name: "William \"Will\" Davis", party: "D", district: "30th District", phone: "(708) 799-4800", website: "https://www.ilga.gov/House/Members/Details/3266" },
+    31: { name: "Michael Crawford", party: "D", district: "31st District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3452" },
+    32: { name: "Lisa Davis", party: "D", district: "32nd District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3458" },
+    33: { name: "Marcus C. Evans, Jr.", party: "D", district: "33rd District", phone: "(773) 445-9700", website: "https://www.ilga.gov/House/Members/Details/3289" },
+    34: { name: "Nicholas K. Smith", party: "D", district: "34th District", phone: "(217) 782-0010", website: "https://www.ilga.gov/House/Members/Details/3332" },
+    35: { name: "Mary Gill", party: "D", district: "35th District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3440" },
+    36: { name: "Rick Ryan", party: "D", district: "36th District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3457" },
+    37: { name: "Patrick Sheehan", party: "R", district: "37th District", phone: "(217) 782-0515", website: "https://www.ilga.gov/House/Members/Details/3448" },
+    38: { name: "Debbie Meyers-Martin", party: "D", district: "38th District", phone: "(708) 756-0882", website: "https://www.ilga.gov/House/Members/Details/3350" },
+    39: { name: "Will Guzzardi", party: "D", district: "39th District", phone: "(773) 292-3888", website: "https://www.ilga.gov/House/Members/Details/3311" },
+    40: { name: "Jaime M. Andrade, Jr.", party: "D", district: "40th District", phone: "(773) 736-5933", website: "https://www.ilga.gov/House/Members/Details/3307" },
+    41: { name: "Janet Yang Rohr", party: "D", district: "41st District", phone: "(630) 434-0548", website: "https://www.ilga.gov/House/Members/Details/3387" },
+    42: { name: "Margaret A. DeLaRosa", party: "D", district: "42nd District", phone: "(630) 858-4900", website: "https://www.ilga.gov/House/Members/Details/3461" },
+    43: { name: "Anna Moeller", party: "D", district: "43rd District", phone: "(847) 214-8864", website: "https://www.ilga.gov/House/Members/Details/3308" },
+    44: { name: "Fred Crespo", party: "D", district: "44th District", phone: "(847) 519-1800", website: "https://www.ilga.gov/House/Members/Details/3274" },
+    45: { name: "Martha Deuter", party: "D", district: "45th District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3455" },
+    46: { name: "Diane Blair-Sherlock", party: "D", district: "46th District", phone: "(630) 495-5860", website: "https://www.ilga.gov/House/Members/Details/3425" },
+    47: { name: "Amy L. Grant", party: "R", district: "47th District", phone: "(630) 510-0200", website: "https://www.ilga.gov/House/Members/Details/3360" },
+    48: { name: "Jennifer Sanalitro", party: "R", district: "48th District", phone: "(217) 782-0515", website: "https://www.ilga.gov/House/Members/Details/3422" },
+    49: { name: "Maura Hirschauer", party: "D", district: "49th District", phone: "(630) 406-0810", website: "https://www.ilga.gov/House/Members/Details/3388" },
+    50: { name: "Barbara Hernandez", party: "D", district: "50th District", phone: "(630) 585-1308", website: "https://www.ilga.gov/House/Members/Details/3367" },
+    51: { name: "Nabeela Syed", party: "D", district: "51st District", phone: "(847) 991-7190", website: "https://www.ilga.gov/House/Members/Details/3423" },
+    52: { name: "Martin McLaughlin", party: "R", district: "52nd District", phone: "(847) 458-2027", website: "https://www.ilga.gov/House/Members/Details/3389" },
+    53: { name: "Nicolle Grasse", party: "D", district: "53rd District", phone: "(217) 782-8400", website: "https://www.ilga.gov/House/Members/Details/3450" },
+    54: { name: "Mary Beth Canty", party: "D", district: "54th District", phone: "(847) 749-5010", website: "https://www.ilga.gov/House/Members/Details/3424" },
+    55: { name: "Justin Cochran", party: "D", district: "55th District", phone: "(847) 506-1264", website: "https://www.ilga.gov/House/Members/Details/3462" },
+    56: { name: "Michelle Mussman", party: "D", district: "56th District", phone: "(847) 931-1418", website: "https://www.ilga.gov/House/Members/Details/3284" },
+    57: { name: "Tracy Katz Muhl", party: "D", district: "57th District", phone: "(847) 509-0200", website: "https://www.ilga.gov/House/Members/Details/3447" },
+    58: { name: "Bob Morgan", party: "D", district: "58th District", phone: "(847) 780-3200", website: "https://www.ilga.gov/House/Members/Details/3353" },
+    59: { name: "Daniel Didech", party: "D", district: "59th District", phone: "(847) 793-2428", website: "https://www.ilga.gov/House/Members/Details/3347" },
+    60: { name: "Rita Mayfield", party: "D", district: "60th District", phone: "(847) 623-7786", website: "https://www.ilga.gov/House/Members/Details/3280" },
+    61: { name: "Joyce Mason", party: "D", district: "61st District", phone: "(847) 244-0024", website: "https://www.ilga.gov/House/Members/Details/3357" },
+    62: { name: "Laura Faver Dias", party: "D", district: "62nd District", phone: "(847) 548-1634", website: "https://www.ilga.gov/House/Members/Details/3426" },
+    63: { name: "Steven Reick", party: "R", district: "63rd District", phone: "(815) 459-6453", website: "https://www.ilga.gov/House/Members/Details/3323" },
+    64: { name: "Tom Weber", party: "R", district: "64th District", phone: "(847) 356-3203", website: "https://www.ilga.gov/House/Members/Details/3361" },
+    65: { name: "Dan Ugaste", party: "R", district: "65th District", phone: "(630) 232-0774", website: "https://www.ilga.gov/House/Members/Details/3359" },
+    66: { name: "Suzanne M. Ness", party: "D", district: "66th District", phone: "(847) 658-1900", website: "https://www.ilga.gov/House/Members/Details/3396" },
+    67: { name: "Maurice A. West, II", party: "D", district: "67th District", phone: "(815) 973-0292", website: "https://www.ilga.gov/House/Members/Details/3346" },
+    68: { name: "Dave Vella", party: "D", district: "68th District", phone: "(815) 547-3436", website: "https://www.ilga.gov/House/Members/Details/3390" },
+    69: { name: "Joe C. Sosnowski", party: "R", district: "69th District", phone: "(815) 547-3613", website: "https://www.ilga.gov/House/Members/Details/3285" },
+    70: { name: "Jeff Keicher", party: "R", district: "70th District", phone: "(815) 748-3494", website: "https://www.ilga.gov/House/Members/Details/3333" },
+    71: { name: "Dan Swanson", party: "R", district: "71st District", phone: "(309) 944-0202", website: "https://www.ilga.gov/House/Members/Details/3327" },
+    72: { name: "Gregg Johnson", party: "D", district: "72nd District", phone: "(309) 558-5560", website: "https://www.ilga.gov/House/Members/Details/3427" },
+    73: { name: "Ryan Spain", party: "R", district: "73rd District", phone: "(309) 693-2850", website: "https://www.ilga.gov/House/Members/Details/3325" },
+    74: { name: "Bradley Fritts", party: "R", district: "74th District", phone: "(815) 288-5788", website: "https://www.ilga.gov/House/Members/Details/3428" },
+    75: { name: "Jed Davis", party: "R", district: "75th District", phone: "(815) 786-2740", website: "https://www.ilga.gov/House/Members/Details/3414" },
+    76: { name: "Amy Briel", party: "D", district: "76th District", phone: "(815) 434-0680", website: "https://www.ilga.gov/House/Members/Details/3451" },
+    77: { name: "Norma Hernandez", party: "D", district: "77th District", phone: "(708) 531-9803", website: "https://www.ilga.gov/House/Members/Details/3415" },
+    78: { name: "Camille Y. Lilly", party: "D", district: "78th District", phone: "(708) 345-5955", website: "https://www.ilga.gov/House/Members/Details/3279" },
+    79: { name: "Jackie Haas", party: "R", district: "79th District", phone: "(815) 929-0900", website: "https://www.ilga.gov/House/Members/Details/3379" },
+    80: { name: "Anthony DeLuca", party: "D", district: "80th District", phone: "(708) 756-0882", website: "https://www.ilga.gov/House/Members/Details/3277" },
+    81: { name: "Anne Stava", party: "D", district: "81st District", phone: "(630) 493-0755", website: "https://www.ilga.gov/House/Members/Details/3349" },
+    82: { name: "Nicole La Ha", party: "R", district: "82nd District", phone: "(217) 782-0515", website: "https://www.ilga.gov/House/Members/Details/3445" },
+    83: { name: "Matt Hanson", party: "D", district: "83rd District", phone: "(630) 692-9651", website: "https://www.ilga.gov/House/Members/Details/3416" },
+    84: { name: "Stephanie A. Kifowit", party: "D", district: "84th District", phone: "(630) 585-1308", website: "https://www.ilga.gov/House/Members/Details/3301" },
+    85: { name: "Dagmara Avelar", party: "D", district: "85th District", phone: "(630) 783-0670", website: "https://www.ilga.gov/House/Members/Details/3391" },
+    86: { name: "Lawrence \"Larry\" Walsh, Jr.", party: "D", district: "86th District", phone: "(815) 725-2741", website: "https://www.ilga.gov/House/Members/Details/3290" },
+    87: { name: "William E Hauter", party: "R", district: "87th District", phone: "(217) 782-0515", website: "https://www.ilga.gov/House/Members/Details/3429" },
+    88: { name: "Regan Deering", party: "R", district: "88th District", phone: "(217) 782-0515", website: "https://www.ilga.gov/House/Members/Details/3454" },
+    89: { name: "Tony M. McCombie", party: "R", district: "89th District", phone: "(815) 291-8989", website: "https://www.ilga.gov/House/Members/Details/3322" },
+    90: { name: "John M. Cabello", party: "R", district: "90th District", phone: "(815) 547-3613", website: "https://www.ilga.gov/House/Members/Details/3430" },
+    91: { name: "Sharon Chung", party: "D", district: "91st District", phone: "(309) 662-1100", website: "https://www.ilga.gov/House/Members/Details/3431" },
+    92: { name: "Jehan Gordon-Booth", party: "D", district: "92nd District", phone: "(309) 671-6230", website: "https://www.ilga.gov/House/Members/Details/3275" },
+    93: { name: "Travis Weaver", party: "R", district: "93rd District", phone: "(309) 693-2850", website: "https://www.ilga.gov/House/Members/Details/3435" },
+    94: { name: "Norine K. Hammond", party: "R", district: "94th District", phone: "(309) 833-6667", website: "https://www.ilga.gov/House/Members/Details/3287" },
+    95: { name: "Michael J. Coffey, Jr.", party: "R", district: "95th District", phone: "(217) 782-0515", website: "https://www.ilga.gov/House/Members/Details/3437" },
+    96: { name: "Sue Scherer", party: "D", district: "96th District", phone: "(217) 877-4747", website: "https://www.ilga.gov/House/Members/Details/3303" },
+    97: { name: "Harry Benton", party: "D", district: "97th District", phone: "(815) 254-0000", website: "https://www.ilga.gov/House/Members/Details/3432" },
+    98: { name: "Natalie A. Manley", party: "D", district: "98th District", phone: "(815) 741-8580", website: "https://www.ilga.gov/House/Members/Details/3302" },
+    99: { name: "Kyle Moore", party: "R", district: "99th District", phone: "(217) 782-0515", website: "https://www.ilga.gov/House/Members/Details/3456" },
+    100: { name: "Christopher \"C.D.\" Davidsmeyer", party: "R", district: "100th District", phone: "(217) 245-6510", website: "https://www.ilga.gov/House/Members/Details/3304" },
+    101: { name: "Chris Miller", party: "R", district: "101st District", phone: "(217) 348-5087", website: "https://www.ilga.gov/House/Members/Details/3362" },
+    102: { name: "Adam M. Niemerg", party: "R", district: "102nd District", phone: "(217) 347-7082", website: "https://www.ilga.gov/House/Members/Details/3392" },
+    103: { name: "Carol Ammons", party: "D", district: "103rd District", phone: "(217) 344-8089", website: "https://www.ilga.gov/House/Members/Details/3309" },
+    104: { name: "Brandun Schweizer", party: "R", district: "104th District", phone: "(217) 782-0515", website: "https://www.ilga.gov/House/Members/Details/3446" },
+    105: { name: "Dennis Tipsword", party: "R", district: "105th District", phone: "(309) 467-5100", website: "https://www.ilga.gov/House/Members/Details/3433" },
+    106: { name: "Jason R. Bunting", party: "R", district: "106th District", phone: "(815) 844-9179", website: "https://www.ilga.gov/House/Members/Details/3439" },
+    107: { name: "Brad Halbrook", party: "R", district: "107th District", phone: "(217) 774-4269", website: "https://www.ilga.gov/House/Members/Details/3328" },
+    108: { name: "Wayne A. Rosenthal", party: "R", district: "108th District", phone: "(217) 532-0667", website: "https://www.ilga.gov/House/Members/Details/3434" },
+    109: { name: "Charles Meier", party: "R", district: "109th District", phone: "(618) 242-0905", website: "https://www.ilga.gov/House/Members/Details/3305" },
+    110: { name: "Blaine Wilhour", party: "R", district: "110th District", phone: "(618) 664-5030", website: "https://www.ilga.gov/House/Members/Details/3365" },
+    111: { name: "Amy Elik", party: "R", district: "111th District", phone: "(618) 462-0725", website: "https://www.ilga.gov/House/Members/Details/3393" },
+    112: { name: "Katie Stuart", party: "D", district: "112th District", phone: "(618) 655-7441", website: "https://www.ilga.gov/House/Members/Details/3326" },
+    113: { name: "Jay Hoffman", party: "D", district: "113th District", phone: "(618) 236-8700", website: "https://www.ilga.gov/House/Members/Details/3306" },
+    114: { name: "Kevin Schmidt", party: "R", district: "114th District", phone: "(618) 277-7600", website: "https://www.ilga.gov/House/Members/Details/3436" },
+    115: { name: "David Friess", party: "R", district: "115th District", phone: "(618) 282-0083", website: "https://www.ilga.gov/House/Members/Details/3395" },
+    116: { name: "Dave Severin", party: "R", district: "116th District", phone: "(618) 435-3256", website: "https://www.ilga.gov/House/Members/Details/3324" },
+    117: { name: "Patrick Windhorst", party: "R", district: "117th District", phone: "(618) 524-4249", website: "https://www.ilga.gov/House/Members/Details/3364" },
+    118: { name: "Paul Jacobs", party: "R", district: "118th District", phone: "(618) 634-4514", website: "https://www.ilga.gov/House/Members/Details/3394" },
+  },
+
+  // Illinois Senate - 104th General Assembly (all 59 members)
+  senate: {
+    1:  { name: "Javier L. Cervantes", party: "D", district: "1st District", phone: "(217) 782-5966", website: "https://www.ilga.gov/Senate/Members/Details/3403" },
+    2:  { name: "Omar Aquino", party: "D", district: "2nd District", phone: "(773) 292-3888", website: "https://www.ilga.gov/Senate/Members/Details/3316" },
+    3:  { name: "Mattie Hunter", party: "D", district: "3rd District", phone: "(217) 782-5966", website: "https://www.ilga.gov/Senate/Members/Details/3269" },
+    4:  { name: "Kimberly A. Lightford", party: "D", district: "4th District", phone: "(708) 615-1747", website: "https://www.ilga.gov/Senate/Members/Details/3264" },
+    5:  { name: "Lakesia Collins", party: "D", district: "5th District", phone: "(217) 782-6252", website: "https://www.ilga.gov/Senate/Members/Details/3443" },
+    6:  { name: "Sara Feigenholtz", party: "D", district: "6th District", phone: "(773) 769-1717", website: "https://www.ilga.gov/Senate/Members/Details/3376" },
+    7:  { name: "Mike Simmons", party: "D", district: "7th District", phone: "(773) 769-1717", website: "https://www.ilga.gov/Senate/Members/Details/3398" },
+    8:  { name: "Ram Villivalam", party: "D", district: "8th District", phone: "(773) 769-1717", website: "https://www.ilga.gov/Senate/Members/Details/3345" },
+    9:  { name: "Laura Fine", party: "D", district: "9th District", phone: "(847) 967-5398", website: "https://www.ilga.gov/Senate/Members/Details/3338" },
+    10: { name: "Robert F. Martwick", party: "D", district: "10th District", phone: "(773) 736-5933", website: "https://www.ilga.gov/Senate/Members/Details/3369" },
+    11: { name: "Mike Porfirio", party: "D", district: "11th District", phone: "(708) 386-7200", website: "https://www.ilga.gov/Senate/Members/Details/3404" },
+    12: { name: "Celina Villanueva", party: "D", district: "12th District", phone: "(312) 756-0882", website: "https://www.ilga.gov/Senate/Members/Details/3375" },
+    13: { name: "Robert Peters", party: "D", district: "13th District", phone: "(773) 445-9700", website: "https://www.ilga.gov/Senate/Members/Details/3343" },
+    14: { name: "Emil Jones, III", party: "D", district: "14th District", phone: "(708) 756-0882", website: "https://www.ilga.gov/Senate/Members/Details/3276" },
+    15: { name: "Napoleon Harris, III", party: "D", district: "15th District", phone: "(708) 756-0882", website: "https://www.ilga.gov/Senate/Members/Details/3292" },
+    16: { name: "Willie Preston", party: "D", district: "16th District", phone: "(217) 782-5966", website: "https://www.ilga.gov/Senate/Members/Details/3405" },
+    17: { name: "Elgie R. Sims, Jr.", party: "D", district: "17th District", phone: "(773) 445-9700", website: "https://www.ilga.gov/Senate/Members/Details/3331" },
+    18: { name: "Bill Cunningham", party: "D", district: "18th District", phone: "(708) 756-0882", website: "https://www.ilga.gov/Senate/Members/Details/3291" },
+    19: { name: "Michael E. Hastings", party: "D", district: "19th District", phone: "(708) 756-0882", website: "https://www.ilga.gov/Senate/Members/Details/3293" },
+    20: { name: "Graciela Guzmán", party: "D", district: "20th District", phone: "(217) 782-5966", website: "https://www.ilga.gov/Senate/Members/Details/3442" },
+    21: { name: "Laura Ellman", party: "D", district: "21st District", phone: "(630) 783-0670", website: "https://www.ilga.gov/Senate/Members/Details/3339" },
+    22: { name: "Cristina Castro", party: "D", district: "22nd District", phone: "(847) 214-8864", website: "https://www.ilga.gov/Senate/Members/Details/3317" },
+    23: { name: "Suzy Glowiak Hilton", party: "D", district: "23rd District", phone: "(630) 645-0714", website: "https://www.ilga.gov/Senate/Members/Details/3341" },
+    24: { name: "Seth Lewis", party: "R", district: "24th District", phone: "(847) 458-2027", website: "https://www.ilga.gov/Senate/Members/Details/3406" },
+    25: { name: "Karina Villa", party: "D", district: "25th District", phone: "(630) 406-0810", website: "https://www.ilga.gov/Senate/Members/Details/3385" },
+    26: { name: "Darby A. Hills", party: "R", district: "26th District", phone: "(217) 782-0515", website: "https://www.ilga.gov/Senate/Members/Details/3460" },
+    27: { name: "Mark L. Walker", party: "D", district: "27th District", phone: "(847) 680-7140", website: "https://www.ilga.gov/Senate/Members/Details/3449" },
+    28: { name: "Laura M. Murphy", party: "D", district: "28th District", phone: "(847) 718-9900", website: "https://www.ilga.gov/Senate/Members/Details/3313" },
+    29: { name: "Julie A. Morrison", party: "D", district: "29th District", phone: "(847) 945-4590", website: "https://www.ilga.gov/Senate/Members/Details/3294" },
+    30: { name: "Adriane Johnson", party: "D", district: "30th District", phone: "(847) 623-7786", website: "https://www.ilga.gov/Senate/Members/Details/3378" },
+    31: { name: "Mary Edly-Allen", party: "D", district: "31st District", phone: "(847) 244-0024", website: "https://www.ilga.gov/Senate/Members/Details/3407" },
+    32: { name: "Craig Wilcox", party: "R", district: "32nd District", phone: "(815) 459-6453", website: "https://www.ilga.gov/Senate/Members/Details/3336" },
+    33: { name: "Donald P. DeWitte", party: "R", district: "33rd District", phone: "(630) 232-0774", website: "https://www.ilga.gov/Senate/Members/Details/3334" },
+    34: { name: "Steve Stadelman", party: "D", district: "34th District", phone: "(815) 987-7555", website: "https://www.ilga.gov/Senate/Members/Details/3296" },
+    35: { name: "Dave Syverson", party: "R", district: "35th District", phone: "(815) 987-7555", website: "https://www.ilga.gov/Senate/Members/Details/3265" },
+    36: { name: "Michael W. Halpin", party: "D", district: "36th District", phone: "(309) 558-5560", website: "https://www.ilga.gov/Senate/Members/Details/3408" },
+    37: { name: "Li Arellano, Jr.", party: "R", district: "37th District", phone: "(815) 288-5788", website: "https://www.ilga.gov/Senate/Members/Details/3383" },
+    38: { name: "Sue Rezin", party: "R", district: "38th District", phone: "(815) 844-9179", website: "https://www.ilga.gov/Senate/Members/Details/3281" },
+    39: { name: "Don Harmon", party: "D", district: "39th District", phone: "(708) 848-2002", website: "https://www.ilga.gov/Senate/Members/Details/3268" },
+    40: { name: "Patrick J. Joyce", party: "D", district: "40th District", phone: "(815) 929-0900", website: "https://www.ilga.gov/Senate/Members/Details/3372" },
+    41: { name: "John F. Curran", party: "R", district: "41st District", phone: "(630) 493-0755", website: "https://www.ilga.gov/Senate/Members/Details/3329" },
+    42: { name: "Linda Holmes", party: "D", district: "42nd District", phone: "(630) 801-8985", website: "https://www.ilga.gov/Senate/Members/Details/3270" },
+    43: { name: "Rachel Ventura", party: "D", district: "43rd District", phone: "(815) 741-8580", website: "https://www.ilga.gov/Senate/Members/Details/3409" },
+    44: { name: "Sally J. Turner", party: "R", district: "44th District", phone: "(309) 467-5100", website: "https://www.ilga.gov/Senate/Members/Details/3397" },
+    45: { name: "Andrew S. Chesney", party: "R", district: "45th District", phone: "(815) 232-0774", website: "https://www.ilga.gov/Senate/Members/Details/3410" },
+    46: { name: "David Koehler", party: "D", district: "46th District", phone: "(309) 693-2850", website: "https://www.ilga.gov/Senate/Members/Details/3271" },
+    47: { name: "Neil Anderson", party: "R", district: "47th District", phone: "(309) 944-0202", website: "https://www.ilga.gov/Senate/Members/Details/3312" },
+    48: { name: "Doris Turner", party: "D", district: "48th District", phone: "(217) 793-2181", website: "https://www.ilga.gov/Senate/Members/Details/3399" },
+    49: { name: "Meg Loughran Cappel", party: "D", district: "49th District", phone: "(815) 725-2741", website: "https://www.ilga.gov/Senate/Members/Details/3380" },
+    50: { name: "Jil Tracy", party: "R", district: "50th District", phone: "(217) 245-6510", website: "https://www.ilga.gov/Senate/Members/Details/3319" },
+    51: { name: "Chapin Rose", party: "R", district: "51st District", phone: "(217) 352-0716", website: "https://www.ilga.gov/Senate/Members/Details/3295" },
+    52: { name: "Paul Faraci", party: "D", district: "52nd District", phone: "(217) 352-0716", website: "https://www.ilga.gov/Senate/Members/Details/3412" },
+    53: { name: "Chris Balkema", party: "R", district: "53rd District", phone: "(815) 844-9179", website: "https://www.ilga.gov/Senate/Members/Details/3413" },
+    54: { name: "Steve McClure", party: "R", district: "54th District", phone: "(217) 793-2181", website: "https://www.ilga.gov/Senate/Members/Details/3342" },
+    55: { name: "Jason Plummer", party: "R", district: "55th District", phone: "(618) 656-7400", website: "https://www.ilga.gov/Senate/Members/Details/3344" },
+    56: { name: "Erica Harriss", party: "R", district: "56th District", phone: "(618) 656-7400", website: "https://www.ilga.gov/Senate/Members/Details/3411" },
+    57: { name: "Christopher Belt", party: "D", district: "57th District", phone: "(618) 875-1212", website: "https://www.ilga.gov/Senate/Members/Details/3337" },
+    58: { name: "Terri Bryant", party: "R", district: "58th District", phone: "(618) 687-1776", website: "https://www.ilga.gov/Senate/Members/Details/3386" },
+    59: { name: "Dale Fowler", party: "R", district: "59th District", phone: "(618) 382-3895", website: "https://www.ilga.gov/Senate/Members/Details/3318" },
+  },
+
+  // U.S. Congressional Delegation - Illinois (all 17 members)
+  congress: {
+    1:  { name: "Jonathan Jackson", party: "D", district: "1st Congressional District", phone: "(202) 225-4372", website: "https://jonathanjackson.house.gov" },
+    2:  { name: "Robin Kelly", party: "D", district: "2nd Congressional District", phone: "(202) 225-0773", website: "https://robinkelly.house.gov" },
+    3:  { name: "Delia C. Ramirez", party: "D", district: "3rd Congressional District", phone: "(202) 225-5701", website: "https://ramirez.house.gov" },
+    4:  { name: 'Jesús "Chuy" García', party: "D", district: "4th Congressional District", phone: "(202) 225-8203", website: "https://chuygarcia.house.gov" },
+    5:  { name: "Mike Quigley", party: "D", district: "5th Congressional District", phone: "(202) 225-4061", website: "https://quigley.house.gov" },
+    6:  { name: "Sean Casten", party: "D", district: "6th Congressional District", phone: "(202) 225-4561", website: "https://casten.house.gov" },
+    7:  { name: "Danny K. Davis", party: "D", district: "7th Congressional District", phone: "(202) 225-5006", website: "https://davis.house.gov" },
+    8:  { name: "Raja Krishnamoorthi", party: "D", district: "8th Congressional District", phone: "(202) 225-3711", website: "https://krishnamoorthi.house.gov" },
+    9:  { name: "Jan Schakowsky", party: "D", district: "9th Congressional District", phone: "(202) 225-2111", website: "https://schakowsky.house.gov" },
+    10: { name: "Brad Schneider", party: "D", district: "10th Congressional District", phone: "(202) 225-4835", website: "https://schneider.house.gov" },
+    11: { name: "Bill Foster", party: "D", district: "11th Congressional District", phone: "(202) 225-3515", website: "https://foster.house.gov" },
+    12: { name: "Mike Bost", party: "R", district: "12th Congressional District", phone: "(202) 225-5661", website: "https://bost.house.gov" },
+    13: { name: "Nikki Budzinski", party: "D", district: "13th Congressional District", phone: "(202) 225-2371", website: "https://budzinski.house.gov" },
+    14: { name: "Lauren Underwood", party: "D", district: "14th Congressional District", phone: "(202) 225-2976", website: "https://underwood.house.gov" },
+    15: { name: "Mary Miller", party: "R", district: "15th Congressional District", phone: "(202) 225-5271", website: "https://miller.house.gov" },
+    16: { name: "Darin LaHood", party: "R", district: "16th Congressional District", phone: "(202) 225-6201", website: "https://lahood.house.gov" },
+    17: { name: "Eric Sorensen", party: "D", district: "17th Congressional District", phone: "(202) 225-5905", website: "https://sorensen.house.gov" },
+  },
+
+  // Chicago City Council - all 50 wards (2023 term)
+  ward: {
+    1:  { name: "Daniel La Spata", party: "D", district: "1st Ward", phone: "(312) 744-3063", email: "ward01@cityofchicago.org", website: "" },
+    2:  { name: "Brian Hopkins", party: "D", district: "2nd Ward", phone: "(312) 744-6836", email: "ward02@cityofchicago.org", website: "" },
+    3:  { name: "Pat Dowell", party: "D", district: "3rd Ward", phone: "(312) 744-8734", email: "ward03@cityofchicago.org", website: "" },
+    4:  { name: "Lamont J. Robinson", party: "D", district: "4th Ward", phone: "(312) 744-8653", email: "ward04@cityofchicago.org", website: "" },
+    5:  { name: "Desmon C. Yancy", party: "D", district: "5th Ward", phone: "(312) 744-2690", email: "ward05@cityofchicago.org", website: "" },
+    6:  { name: "William E. Hall", party: "D", district: "6th Ward", phone: "(312) 744-5687", email: "ward06@cityofchicago.org", website: "" },
+    7:  { name: "Gregory Mitchell", party: "D", district: "7th Ward", phone: "(312) 744-0677", email: "ward07@cityofchicago.org", website: "" },
+    8:  { name: "Michelle Harris", party: "D", district: "8th Ward", phone: "(312) 744-8654", email: "ward08@cityofchicago.org", website: "" },
+    9:  { name: "Anthony Beale", party: "D", district: "9th Ward", phone: "(312) 744-2690", email: "ward09@cityofchicago.org", website: "" },
+    10: { name: "Ana Guajardo", party: "D", district: "10th Ward", phone: "(312) 744-3078", email: "ward10@cityofchicago.org", website: "" },
+    11: { name: "Nicole T. Lee", party: "D", district: "11th Ward", phone: "(312) 744-2690", email: "ward11@cityofchicago.org", website: "" },
+    12: { name: "Julia M. Ramirez", party: "D", district: "12th Ward", phone: "(312) 744-3060", email: "ward12@cityofchicago.org", website: "" },
+    13: { name: "Marty Quinn", party: "D", district: "13th Ward", phone: "(312) 744-4088", email: "ward13@cityofchicago.org", website: "" },
+    14: { name: "Jeylu B. Gutierrez", party: "D", district: "14th Ward", phone: "(312) 744-2690", email: "ward14@cityofchicago.org", website: "" },
+    15: { name: "Raymond Lopez", party: "D", district: "15th Ward", phone: "(312) 744-3062", email: "ward15@cityofchicago.org", website: "" },
+    16: { name: "Stephanie D. Coleman", party: "D", district: "16th Ward", phone: "(312) 744-2690", email: "ward16@cityofchicago.org", website: "" },
+    17: { name: "David H. Moore", party: "D", district: "17th Ward", phone: "(312) 744-8694", email: "ward17@cityofchicago.org", website: "" },
+    18: { name: "Derrick G. Curtis", party: "D", district: "18th Ward", phone: "(312) 744-8694", email: "ward18@cityofchicago.org", website: "" },
+    19: { name: "Matthew J. O'Shea", party: "D", district: "19th Ward", phone: "(312) 744-2690", email: "ward19@cityofchicago.org", website: "" },
+    20: { name: "Jeanette B. Taylor", party: "D", district: "20th Ward", phone: "(312) 744-2690", email: "ward20@cityofchicago.org", website: "" },
+    21: { name: "Ronnie L. Mosley", party: "D", district: "21st Ward", phone: "(312) 744-2690", email: "ward21@cityofchicago.org", website: "" },
+    22: { name: "Michael D. Rodriguez", party: "D", district: "22nd Ward", phone: "(312) 744-2690", email: "ward22@cityofchicago.org", website: "" },
+    23: { name: "Monique L. Scott", party: "D", district: "23rd Ward", phone: "(312) 744-2690", email: "ward23@cityofchicago.org", website: "" },
+    24: { name: "Leny Lichtenberg", party: "D", district: "24th Ward", phone: "(312) 744-2690", email: "ward24@cityofchicago.org", website: "" },
+    25: { name: "Byron Sigcho-Lopez", party: "D", district: "25th Ward", phone: "(312) 744-0171", email: "ward25@cityofchicago.org", website: "" },
+    26: { name: "Jessie Fuentes", party: "D", district: "26th Ward", phone: "(312) 744-2690", email: "ward26@cityofchicago.org", website: "" },
+    27: { name: "Walter Burnett Jr.", party: "D", district: "27th Ward", phone: "(312) 744-2690", email: "ward27@cityofchicago.org", website: "" },
+    28: { name: "Jason C. Ervin", party: "D", district: "28th Ward", phone: "(312) 744-2690", email: "ward28@cityofchicago.org", website: "" },
+    29: { name: "Chris Taliaferro", party: "D", district: "29th Ward", phone: "(312) 744-2690", email: "ward29@cityofchicago.org", website: "" },
+    30: { name: "Felix Cardona, Jr.", party: "D", district: "30th Ward", phone: "(312) 744-2690", email: "ward30@cityofchicago.org", website: "" },
+    31: { name: "Felix Cardona, Jr.", party: "D", district: "31st Ward", phone: "(312) 744-2690", email: "ward31@cityofchicago.org", website: "" },
+    32: { name: "Scott Waguespack", party: "D", district: "32nd Ward", phone: "(312) 744-2150", email: "ward32@cityofchicago.org", website: "" },
+    33: { name: "Rossana Rodriguez-Sanchez", party: "D", district: "33rd Ward", phone: "(312) 744-2690", email: "ward33@cityofchicago.org", website: "" },
+    34: { name: "Bill Conway", party: "D", district: "34th Ward", phone: "(312) 744-2690", email: "ward34@cityofchicago.org", website: "" },
+    35: { name: "Carlos Ramirez-Rosa", party: "D", district: "35th Ward", phone: "(312) 744-2690", email: "ward35@cityofchicago.org", website: "" },
+    36: { name: "Gilbert Villegas", party: "D", district: "36th Ward", phone: "(312) 744-2690", email: "ward36@cityofchicago.org", website: "" },
+    37: { name: "Emma Mitts", party: "D", district: "37th Ward", phone: "(312) 744-2690", email: "ward37@cityofchicago.org", website: "" },
+    38: { name: "Nicholas Sposato", party: "I", district: "38th Ward", phone: "(312) 744-2690", email: "ward38@cityofchicago.org", website: "" },
+    39: { name: "Samantha Nugent", party: "D", district: "39th Ward", phone: "(312) 744-2690", email: "ward39@cityofchicago.org", website: "" },
+    40: { name: "Andre Vasquez, Jr.", party: "D", district: "40th Ward", phone: "(312) 744-2690", email: "ward40@cityofchicago.org", website: "" },
+    41: { name: "Anthony Napolitano", party: "I", district: "41st Ward", phone: "(312) 744-2690", email: "ward41@cityofchicago.org", website: "" },
+    42: { name: "Brendan Reilly", party: "D", district: "42nd Ward", phone: "(312) 744-2690", email: "ward42@cityofchicago.org", website: "" },
+    43: { name: "Michele Smith", party: "D", district: "43rd Ward", phone: "(312) 744-3851", email: "ward43@cityofchicago.org", website: "" },
+    44: { name: "Bennett R. Lawson", party: "D", district: "44th Ward", phone: "(312) 744-2690", email: "ward44@cityofchicago.org", website: "" },
+    45: { name: "James M. Gardiner", party: "D", district: "45th Ward", phone: "(312) 744-2690", email: "ward45@cityofchicago.org", website: "" },
+    46: { name: "Natasha Ostapenko", party: "D", district: "46th Ward", phone: "(312) 744-2690", email: "ward46@cityofchicago.org", website: "" },
+    47: { name: "Matthew J. Martin", party: "D", district: "47th Ward", phone: "(312) 744-6876", email: "ward47@cityofchicago.org", website: "" },
+    48: { name: "Leni Manaa-Hoppenworth", party: "D", district: "48th Ward", phone: "(312) 744-2690", email: "ward48@cityofchicago.org", website: "" },
+    49: { name: "Maria E. Hadden", party: "D", district: "49th Ward", phone: "(312) 744-8843", email: "ward49@cityofchicago.org", website: "" },
+    50: { name: "Debra Silverstein", party: "D", district: "50th Ward", phone: "(312) 744-2690", email: "ward50@cityofchicago.org", website: "" },
+  },
+
+  // Chicago School Board (placeholder — newly elected board, districts TBD)
+  school: {
+    1:  { name: "School Board District 1", party: "", district: "District 1", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cps.edu/about/board-of-education/" },
+    2:  { name: "School Board District 2", party: "", district: "District 2", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cps.edu/about/board-of-education/" },
+    3:  { name: "School Board District 3", party: "", district: "District 3", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cps.edu/about/board-of-education/" },
+    4:  { name: "School Board District 4", party: "", district: "District 4", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cps.edu/about/board-of-education/" },
+    5:  { name: "School Board District 5", party: "", district: "District 5", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cps.edu/about/board-of-education/" },
+    6:  { name: "School Board District 6", party: "", district: "District 6", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cps.edu/about/board-of-education/" },
+    7:  { name: "School Board District 7", party: "", district: "District 7", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cps.edu/about/board-of-education/" },
+    8:  { name: "School Board District 8", party: "", district: "District 8", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cps.edu/about/board-of-education/" },
+    9:  { name: "School Board District 9", party: "", district: "District 9", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cps.edu/about/board-of-education/" },
+    10: { name: "School Board District 10", party: "", district: "District 10", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cps.edu/about/board-of-education/" },
+  }
+};
+
+const GEOJSON_SOURCES = {
+  house:    'https://geoservices.epa.illinois.gov/arcgis/rest/services/Boundaries/LegislativeDistricts/MapServer/3/query?where=1%3D1&outFields=*&outSR=4326&f=geojson',
+  senate:   'https://geoservices.epa.illinois.gov/arcgis/rest/services/Boundaries/LegislativeDistricts/MapServer/2/query?where=1%3D1&outFields=*&outSR=4326&f=geojson',
+  congress: 'https://geoservices.epa.illinois.gov/arcgis/rest/services/Boundaries/LegislativeDistricts/MapServer/4/query?where=1%3D1&outFields=*&outSR=4326&f=geojson',
+  ward:     'wards.geojson',
+  school:   'https://data.cityofchicago.org/api/geospatial/8mea-i9j8?method=export&type=GeoJSON',
+};
+
+let map, autocomplete;
+let currentLayer = 'house';
+let foundDistrict = null;
+let searchMarker = null;
+let searchedLat = null, searchedLng = null;
+let allResults = {};
+
+window.addEventListener('DOMContentLoaded', function() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 41.85, lng: -88.0 },
+    zoom: 7,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: true,
+    styles: [
+      { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9d8e8' }] },
+      { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#f4f6f8' }] },
+      { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#d0d8e4' }] },
+      { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+      { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#a0b0c0' }] },
+      { featureType: 'administrative', elementType: 'labels.text.fill', stylers: [{ color: '#4a6070' }] },
+    ]
+  });
+
+  const ilBounds = new google.maps.LatLngBounds(
+    new google.maps.LatLng(36.97, -91.51),
+    new google.maps.LatLng(42.51, -87.02)
+  );
+  autocomplete = new google.maps.places.Autocomplete(
+    document.getElementById('addressInput'),
+    { bounds: ilBounds, componentRestrictions: { country: 'us' }, types: ['address'] }
+  );
+  document.getElementById('addressInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') e.preventDefault();
+  });
+  autocomplete.addListener('place_changed', function() {
+    var place = autocomplete.getPlace();
+    if (!place.geometry || !place.geometry.location) { showError('Please select an address from the dropdown.'); return; }
+    var loc = place.geometry.location;
+    searchedLat = loc.lat(); searchedLng = loc.lng();
+    placeMarkerAndSearch(loc);
+  });
+  loadLayer(currentLayer);
+});
+
+function doSearch() {
+  var val = document.getElementById('addressInput').value.trim();
+  if (!val) return;
+  if (searchedLat !== null) { findAndShowDistrict(searchedLat, searchedLng, currentLayer); return; }
+  showLoading(); setStatus('Geocoding…');
+  var geocoder = new google.maps.Geocoder();
+  geocoder.geocode({ address: val + ', Illinois', region: 'us' }, function(results, status) {
+    if (status !== 'OK' || !results[0]) { showError('Address not found. Try selecting from the dropdown.'); setStatus('Not found'); return; }
+    var loc = results[0].geometry.location;
+    searchedLat = loc.lat(); searchedLng = loc.lng();
+    placeMarkerAndSearch(loc);
+  });
+}
+
+function placeMarkerAndSearch(loc) {
+  if (searchMarker) searchMarker.setMap(null);
+  searchMarker = new google.maps.Marker({
+    position: loc, map,
+    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: '#00a89c', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2.5 }
+  });
+  map.panTo(loc); map.setZoom(11);
+  allResults = {};
+  findAndShowDistrict(loc.lat(), loc.lng(), currentLayer);
+}
+
+var GEOJSON_FALLBACKS = {};
+
+function loadLayer(layer, onLoadedCallback) {
+  map.data.forEach(function(f) { map.data.remove(f); });
+  var url = GEOJSON_SOURCES[layer];
+  if (!url) return;
+  setStatus('Loading ' + layerLabel(layer) + ' boundaries…');
+  fetch(url)
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) { onLayerLoaded(data, layer, onLoadedCallback); })
+    .catch(function(err) {
+      var fallback = GEOJSON_FALLBACKS[layer];
+      if (fallback) {
+        setStatus('Trying alternate source for ' + layerLabel(layer) + '…');
+        fetch(fallback)
+          .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(function(data) { onLayerLoaded(data, layer, onLoadedCallback); })
+          .catch(function() { setStatus('Failed to load ' + layerLabel(layer) + ' boundaries'); });
+      } else {
+        setStatus('Failed to load ' + layerLabel(layer) + ': ' + err.message);
+      }
+    });
+}
+
+function onLayerLoaded(data, layer, onLoadedCallback) {
+  map.data.addGeoJson(data);
+  map.data.setStyle(function(feature) { return styleFeature(feature); });
+  map.data.addListener('click', function(e) {
+    var num = getDistrictNum(e.feature, layer);
+    if (num) { highlightDistrict(num); showRepCard(layer, num); }
+  });
+  setStatus(layerLabel(layer) + ' loaded — ' + (data.features ? data.features.length : 0) + ' districts');
+  if (onLoadedCallback) onLoadedCallback();
+}
+
+function styleFeature(feature) {
+  var num = getDistrictNum(feature, currentLayer);
+  var isFound = foundDistrict !== null && num === foundDistrict;
+  return {
+    fillColor: isFound ? '#00a89c' : '#0d2340', fillOpacity: isFound ? 0.22 : 0.05,
+    strokeColor: isFound ? '#00a89c' : '#0d2340', strokeWeight: isFound ? 2.5 : 0.7, strokeOpacity: isFound ? 1 : 0.35,
+  };
+}
+
+function getDistrictNum(feature, layer) {
+  var keys = ['DistrictNum','SenateNum','HouseNum','DISTRICTID','DISTRICT','district','WARD_NUM','ward_num','WARD','ward','CD','cd','GEOID','geoid','number','Number','NAME','name','District','district_n','DISTRICT_N'];
+  for (var i = 0; i < keys.length; i++) {
+    var v = feature.getProperty(keys[i]);
+    if (v !== undefined && v !== null && v !== '') { var n = parseInt(v, 10); if (!isNaN(n) && n > 0) return n; }
+  }
+  return null;
+}
+
+function highlightDistrict(num) {
+  foundDistrict = num;
+  map.data.setStyle(function(feature) { return styleFeature(feature); });
+}
+
+function switchLayer(layer, tabEl) {
+  currentLayer = layer; foundDistrict = null;
+  document.querySelectorAll('.layer-tab').forEach(function(t) { t.classList.remove('active'); });
+  tabEl.classList.add('active');
+  if (allResults[layer]) {
+    showRepCard(layer, allResults[layer]);
+    var distNum = allResults[layer];
+    loadLayer(layer, function() { highlightDistrict(distNum); setStatus(layerLabel(layer) + ': District ' + distNum); });
+  } else if (searchedLat !== null) {
+    loadLayer(layer, function() { findAndShowDistrict(searchedLat, searchedLng, layer); });
+  } else {
+    showPlaceholder();
+    loadLayer(layer);
+  }
+}
+
+function findAndShowDistrict(lat, lng, layer) {
+  setStatus('Finding your ' + layerLabel(layer) + ' district…'); showLoading();
+  var point = new google.maps.LatLng(lat, lng);
+  var found = null;
+  map.data.forEach(function(feature) {
+    if (found) return;
+    var geo = feature.getGeometry(); if (!geo) return;
+    if (isPointInFeature(point, geo)) found = getDistrictNum(feature, layer);
+  });
+  if (found) {
+    allResults[layer] = found; highlightDistrict(found); showRepCard(layer, found);
+    setStatus(layerLabel(layer) + ': District ' + found);
+  } else { showNoResult(layer); setStatus('District not found'); }
+}
+
+function isPointInFeature(point, geometry) {
+  var type = geometry.getType();
+  if (type === 'Polygon') { return google.maps.geometry.poly.containsLocation(point, new google.maps.Polygon({ paths: geometry.getArray()[0].getArray() })); }
+  if (type === 'MultiPolygon') {
+    var polys = geometry.getArray();
+    for (var i = 0; i < polys.length; i++) { if (google.maps.geometry.poly.containsLocation(point, new google.maps.Polygon({ paths: polys[i].getArray()[0].getArray() }))) return true; }
+  }
+  return false;
+}
+
+function layerLabel(l) { return { house:'IL House', senate:'IL Senate', congress:'Congressional', ward:'Chicago Ward', school:'School Board' }[l] || l; }
+function showLoading() { document.getElementById('resultsSection').innerHTML = '<div class="msg-loading"><div class="spinner"></div> Looking up your district…</div>'; }
+function showError(msg) { document.getElementById('resultsSection').innerHTML = '<div class="msg-error">⚠️ ' + msg + '</div>'; }
+function showPlaceholder() { document.getElementById('resultsSection').innerHTML = '<div class="placeholder"><div class="placeholder-icon">📍</div><h3>Enter your address to get started</h3><p>We\'ll find your IL House, Senate, Congressional, Chicago Ward, and School Board representatives.</p></div>'; }
+function showNoResult(layer) { document.getElementById('resultsSection').innerHTML = '<div class="msg-error">No ' + layerLabel(layer) + ' district found. Chicago Ward and School Board layers apply to Chicago addresses only.</div>'; }
+
+function showRepCard(layer, distNum) {
+  var rep = REPS[layer] && REPS[layer][distNum];
+  var label = layerLabel(layer);
+  var html = '';
+  if (rep) {
+    var badge = rep.party ? '<span class="party-badge ' + rep.party + '">' + (rep.party === 'D' ? 'Democrat' : rep.party === 'R' ? 'Republican' : 'Independent') + '</span>' : '';
+    var phone = rep.phone ? '<a class="rep-contact-link" href="tel:' + rep.phone + '"><span class="icon">📞</span>' + rep.phone + '</a>' : '';
+    var email = rep.email ? '<a class="rep-contact-link" href="mailto:' + rep.email + '"><span class="icon">✉️</span>' + rep.email + '</a>' : '';
+    var web = rep.website ? '<a class="rep-contact-link" href="' + rep.website + '" target="_blank"><span class="icon">🔗</span>Official Website</a>' : '';
+    html = '<div class="rep-card"><div class="rep-card-header"><div class="rep-avatar">👤</div><div class="rep-info"><div class="rep-name">' + rep.name + '</div><div class="rep-title">' + label + '</div>' + badge + '</div></div><div class="rep-district">District: <strong>' + distNum + '</strong> — ' + rep.district + '</div><div class="rep-contacts">' + phone + email + web + '</div></div>';
+  } else {
+    html = '<div class="rep-card"><div class="rep-card-header"><div class="rep-avatar">📋</div><div class="rep-info"><div class="rep-name">' + label + ' — District ' + distNum + '</div><div class="rep-title">Representative info coming soon</div></div></div><div class="rep-district">District: <strong>' + distNum + '</strong></div><div class="rep-contacts"><a class="rep-contact-link" href="https://www.ilga.gov" target="_blank"><span class="icon">🔗</span>Illinois General Assembly</a></div></div>';
+  }
+  document.getElementById('resultsSection').innerHTML = html;
+}
+
+function setStatus(msg) { document.getElementById('statusBar').textContent = msg; }
+</script>
+</body>
+</html>
