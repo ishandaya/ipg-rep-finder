@@ -76,6 +76,24 @@
   .spinner { width: 12px; height: 12px; border: 2px solid rgba(0,168,156,0.3); border-top-color: var(--ipg-teal); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* Map-level error banner (shown by gm_authFailure) */
+  .map-error {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+    background: #fee2e2;
+    color: #c0392b;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .map-error strong { display: block; font-size: 15px; margin-bottom: 8px; }
+  .map-error span { font-size: 11px; color: #8a4038; margin-top: 10px; max-width: 420px; }
+
   /* Email modal */
   .modal-overlay { position: fixed; inset: 0; background: rgba(13,35,64,0.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.hidden { display: none; }
@@ -327,7 +345,45 @@
   </div>
 </div>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDGsCeSPygg96i3hZDmWeqIvupaN6FDhRk&libraries=geometry,places"></script>
+<!-- ──────────────────────────────────────────────────────────────────────────
+     Google Maps auth failure handler.
+     MUST be defined before the Maps API script loads. Google calls this when
+     it rejects the API key (bad referrer, billing off, quota exhausted,
+     restricted API). Without it, a rejected key produces a silent grey box
+     and the console is the only clue.
+     ────────────────────────────────────────────────────────────────────── -->
+<script>
+window.gm_authFailure = function () {
+  var m = document.getElementById('map');
+  if (m) {
+    m.innerHTML =
+      '<div class="map-error">' +
+        '<strong>Map failed to load</strong>' +
+        'Google rejected the API key for this page.' +
+        '<span>Check the key in Google Cloud Console: billing status, daily quota, ' +
+        'HTTP referrer restrictions (must allow this exact domain), and that ' +
+        'Maps JavaScript API, Geocoding API, and Places API are all enabled.</span>' +
+      '</div>';
+  }
+  var s = document.getElementById('statusBar');
+  if (s) s.textContent = 'Google Maps auth failure — check API key configuration';
+  console.error(
+    'gm_authFailure: Google Maps rejected the API key. ' +
+    'Most common cause for this tool is an HTTP referrer restriction that does not ' +
+    'include the page actually making the request. Because the tool is embedded in an ' +
+    'iframe, the referrer Google sees is the IFRAME origin (publicgoodpolicy.github.io), ' +
+    'NOT the parent Squarespace page (publicgoodpolicy.org).'
+  );
+};
+</script>
+
+<!--
+  Maps API loader.
+  v=quarterly pins us to Google's stable quarterly channel instead of the
+  weekly default, so breaking changes arrive on a predictable schedule rather
+  than any given Tuesday. Remove "&v=quarterly" to go back to weekly.
+-->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDGsCeSPygg96i3hZDmWeqIvupaN6FDhRk&v=quarterly&libraries=geometry,places"></script>
 <script>
 // ── FULL ROSTER DATA ──────────────────────────────────────────────────────────
 const REPS = {
@@ -592,6 +648,7 @@ const REPS = {
     50: { name: "Debra L. Silverstein", party: "D", district: "50th Ward", phone: "(773) 262-1050", email: "Ward50@cityofchicago.org", website: "http://50thwardchicago.com" },
   },
 
+  // Cook County Board of Commissioners (all 17 districts)
   cookcounty: {
     1:  { name: "Tara Stamps",       party: "D", district: "1st District",  phone: "(312) 603-4566", email: "tara.stamps@cookcountyil.gov",     website: "https://www.cookcountyil.gov/all-people/tara-stamps" },
     2:  { name: "Michael Scott Jr.", party: "D", district: "2nd District",  phone: "(312) 603-3019", email: "michael.scottjr@cookcountyil.gov", website: "https://www.commissionerscott.com/" },
@@ -612,6 +669,9 @@ const REPS = {
     17: { name: "Sean M. Morrison",  party: "R", district: "17th District", phone: "(312) 603-4566", email: "sean.morrison@cookcountyil.gov",   website: "https://www.cookcountyil.gov/person/sean-m-morrison" },
   },
 
+  // Chicago Police District Councils
+  // Note: district 13 does not exist; 21 and 23 were consolidated. See the
+  // valid-district whitelist in getDistrictNum() for the authoritative list.
   police: {
     1:  { chair: "Sarah Kammerer",     nominating: "Adrienne Johnson",   community: "Jamie Brown",          district: "1st Police District",  website: "https://ccpsa.chicago.gov/district-council/1st-district-council/" },
     2:  { chair: "Ephraim Lee",        nominating: "Marquinn McDonald",   community: "Alexander Perez",      district: "2nd Police District",  website: "https://ccpsa.chicago.gov/district-council/2nd-district-council/" },
@@ -636,25 +696,10 @@ const REPS = {
     24: { chair: "Veronica Arreola",   nominating: "Marilyn Pagan-Banks", community: "Keola Jean-Joseph",    district: "24th Police District", website: "https://ccpsa.chicago.gov/district-council/24th-district-council/" },
     25: { chair: "Jacob Arena",        nominating: "Angelica P. Green",   community: "Saul Arellano",        district: "25th Police District", website: "https://ccpsa.chicago.gov/district-council/25th-district-council/" },
   },
-  cookcounty: {
-    1:  { name: "Tara Stamps",       party: "D", district: "1st District",  phone: "(312) 603-4566", email: "tara.stamps@cookcountyil.gov",     website: "https://www.cookcountyil.gov/all-people/tara-stamps" },
-    2:  { name: "Michael Scott Jr.", party: "D", district: "2nd District",  phone: "(312) 603-3019", email: "michael.scottjr@cookcountyil.gov", website: "https://www.commissionerscott.com/" },
-    3:  { name: "Bill Lowry",        party: "D", district: "3rd District",  phone: "(312) 603-6391", email: "bill.lowry@cookcountyil.gov",       website: "https://www.cookcountyil.gov/person/bill-lowry" },
-    4:  { name: "Stanley Moore",     party: "D", district: "4th District",  phone: "(312) 603-2065", email: "stanley.moore2@cookcountyil.gov",  website: "https://www.cookcountyil.gov/person/stanley-moore" },
-    5:  { name: "Dr. Kisha E. McCaskill", party: "D", district: "5th District", phone: "(312) 603-6381", email: "kisha.mccaskill@cookcountyil.gov", website: "https://www.cookcountyil.gov/all-people/dr-kisha-mccaskill" },
-    6:  { name: "Donna Miller",      party: "D", district: "6th District",  phone: "(312) 603-4216", email: "donna.miller@cookcountyil.gov",    website: "https://www.cookcountyil.gov/person/donna-miller" },
-    7:  { name: "Alma E. Anaya",     party: "D", district: "7th District",  phone: "(312) 603-5443", email: "alma.anaya@cookcountyil.gov",      website: "https://www.cookcountyil.gov/person/alma-e-anaya" },
-    8:  { name: "Jessica Vásquez",   party: "D", district: "8th District",  phone: "(312) 603-8530", email: "jessica.vasquez@cookcountyil.gov", website: "https://www.cookcountyil.gov/all-people/jessica-v-squez" },
-    9:  { name: "Maggie Trevor",     party: "D", district: "9th District",  phone: "(312) 603-4393", email: "maggie.trevor@cookcountyil.gov",   website: "https://www.cookcountyil.gov/all-people/maggie-trevor" },
-    10: { name: "Bridget Gainer",    party: "D", district: "10th District", phone: "(312) 603-4210", email: "bridget.gainer@cookcountyil.gov",  website: "http://www.bridgetgainer.com/" },
-    11: { name: "John P. Daley",     party: "D", district: "11th District", phone: "(312) 603-6386", email: "john.daley@cookcountyil.gov",      website: "https://www.cookcountyil.gov/person/john-p-daley" },
-    12: { name: "Bridget Degnen",    party: "D", district: "12th District", phone: "(312) 603-2065", email: "bridget.degnen@cookcountyil.gov",  website: "https://www.cookcountyil.gov/person/bridget-degnen" },
-    13: { name: "Josina Morita",     party: "D", district: "13th District", phone: "(312) 603-4932", email: "josina.morita@cookcountyil.gov",   website: "https://www.josinamorita.org/" },
-    14: { name: "Scott R. Britton",  party: "D", district: "14th District", phone: "(312) 603-4566", email: "scott.britton@cookcountyil.gov",   website: "https://www.cookcountyil.gov/person/scott-r-britton" },
-    15: { name: "Kevin B. Morrison", party: "D", district: "15th District", phone: "(312) 603-6381", email: "kevin.morrison@cookcountyil.gov",  website: "https://commissionerkevinbmorrison.org/" },
-    16: { name: "Frank J. Aguilar",  party: "D", district: "16th District", phone: "(312) 603-4566", email: "frank.aguilar@cookcountyil.gov",   website: "https://www.cookcountyil.gov/person/frank-j-aguilar" },
-    17: { name: "Sean M. Morrison",  party: "R", district: "17th District", phone: "(312) 603-4566", email: "sean.morrison@cookcountyil.gov",   website: "https://www.cookcountyil.gov/person/sean-m-morrison" },
-  },
+
+  // Chicago Board of Education - 20 subdistricts (10 districts x a/b)
+  // NOTE: this roster changes with the November 2026 transition to a fully
+  // elected board. Appointed seats will need to be re-sourced then.
   school: {
     '1a':  { name: "Ed Bannon", role: "Appointed", district: "District 1a", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cpsboe.org/about/bios" },
     '1b':  { name: "Jennifer Custer", role: "Elected", district: "District 1b", phone: "(773) 553-1600", email: "board@cps.edu", website: "https://www.cpsboe.org/about/bios" },
@@ -714,24 +759,44 @@ window.addEventListener('DOMContentLoaded', function() {
     ]
   });
 
-  const ilBounds = new google.maps.LatLngBounds(
-    new google.maps.LatLng(36.97, -91.51),
-    new google.maps.LatLng(42.51, -87.02)
-  );
-  autocomplete = new google.maps.places.Autocomplete(
-    document.getElementById('addressInput'),
-    { bounds: ilBounds, componentRestrictions: { country: 'us' }, types: ['address'] }
-  );
+  // Address autocomplete is a convenience, not a dependency. If the Places
+  // library fails to initialise (API not enabled on the key, quota, or a
+  // future Google change), we must NOT let it abort the rest of this handler —
+  // loadLayer() below is what draws every district boundary. doSearch() falls
+  // back to the Geocoder, so the tool still works fully without autocomplete.
+  try {
+    const ilBounds = new google.maps.LatLngBounds(
+      new google.maps.LatLng(36.97, -91.51),
+      new google.maps.LatLng(42.51, -87.02)
+    );
+    autocomplete = new google.maps.places.Autocomplete(
+      document.getElementById('addressInput'),
+      { bounds: ilBounds, componentRestrictions: { country: 'us' }, types: ['address'] }
+    );
+    autocomplete.addListener('place_changed', function() {
+      var place = autocomplete.getPlace();
+      if (!place.geometry || !place.geometry.location) { showError('Please select an address from the dropdown.'); return; }
+      var loc = place.geometry.location;
+      searchedLat = loc.lat(); searchedLng = loc.lng();
+      placeMarkerAndSearch(loc);
+    });
+  } catch (err) {
+    console.error('Places Autocomplete unavailable — falling back to Geocoder only:', err);
+  }
+
   document.getElementById('addressInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') e.preventDefault();
   });
-  autocomplete.addListener('place_changed', function() {
-    var place = autocomplete.getPlace();
-    if (!place.geometry || !place.geometry.location) { showError('Please select an address from the dropdown.'); return; }
-    var loc = place.geometry.location;
-    searchedLat = loc.lat(); searchedLng = loc.lng();
-    placeMarkerAndSearch(loc);
+
+  // Clear cached coordinates whenever the address box is edited. Without this,
+  // doSearch() short-circuits on the stale searchedLat and returns the PREVIOUS
+  // address's district for a newly typed address — silently wrong results.
+  document.getElementById('addressInput').addEventListener('input', function() {
+    searchedLat = null;
+    searchedLng = null;
+    allResults = {};
   });
+
   loadLayer(currentLayer);
 });
 
@@ -853,6 +918,7 @@ function getDistrictNum(feature, layer) {
     if (di !== undefined && di !== null) { var n = parseInt(di, 10); if (!isNaN(n) && n > 0) return n; }
   }
   // Police districts use dist_num (lowercase) — valid districts: 1-12,14-20,22,24,25
+  // District 31 is a non-geographic catch-all polygon and must be excluded.
   if (layer === 'police') {
     var pd = feature.getProperty('dist_num');
     if (pd !== undefined && pd !== null) {
@@ -969,7 +1035,7 @@ function showRepCard(layer, distNum) {
     var phone = rep.phone ? '<a class="rep-contact-link" href="tel:' + rep.phone + '"><span class="icon">📞</span>' + rep.phone + '</a>' : '';
     var web = rep.website ? '<a class="rep-contact-link" href="' + rep.website + '" target="_blank"><span class="icon">🔗</span>Official Website</a>' : '';
     var emailBtn = rep.email
-      ? '<button class="send-email-btn" onclick="openModal(\'' + rep.name.replace(/'/g, "\\'").replace(/"/g, '&quot;') + '\', \'' + rep.email + '\', \'' + label + ' — ' + rep.district + '\')">✉️ Send Email</button>'
+      ? '<button class="send-email-btn" data-rep="' + rep.name.replace(/"/g, '&quot;') + '" data-email="' + rep.email + '" data-title="' + label + ' — ' + rep.district + '">✉️ Send Email</button>'
       : (rep.website ? '<a class="send-email-btn" href="' + rep.website + '" target="_blank" style="text-decoration:none">🔗 Contact via Official Website</a>' : '');
     html = '<div class="rep-card">' +
       '<div class="rep-card-header"><div class="rep-avatar">👤</div><div class="rep-info"><div class="rep-name">' + rep.name + '</div><div class="rep-title">' + label + '</div>' + badge + '</div></div>' +
@@ -983,7 +1049,10 @@ function showRepCard(layer, distNum) {
   document.getElementById('resultsSection').innerHTML = html;
 }
 
-function setStatus(msg) { document.getElementById('statusBar').textContent = msg; }
+function setStatus(msg) {
+  var el = document.getElementById('statusBar');
+  if (el) el.textContent = msg;
+}
 
 // ── EMAIL MODAL ───────────────────────────────────────────────────────────────
 var currentRepEmail = '';
@@ -1022,8 +1091,6 @@ function buildMailUrl(client, to, cc, subject, body) {
   var c = cc ? encodeURIComponent(cc) : '';
   switch (client) {
     case 'gmail':
-      // Gmail web compose. 'to' goes unencoded in the query string; Gmail
-      // handles its own parsing.
       return 'https://mail.google.com/mail/?view=cm&fs=1' +
              '&to=' + encodeURIComponent(to) +
              (c ? '&cc=' + c : '') +
@@ -1039,7 +1106,9 @@ function buildMailUrl(client, to, cc, subject, body) {
              '&subject=' + s + '&body=' + b;
     case 'default':
     default:
-      // mailto: expects address UNENCODED; only subject/body/cc get encoded.
+      // mailto: expects the address UNENCODED; only subject/body/cc get encoded.
+      // Running encodeURIComponent on the recipient produces a malformed URI
+      // that mail clients silently reject. Do not "fix" this.
       return 'mailto:' + to + '?subject=' + s + '&body=' + b +
              (c ? '&cc=' + c : '');
   }
@@ -1055,8 +1124,10 @@ function saveClient(client) {
 
 function logNewsletterSignup(first, last, email, zip) {
   // POSTs to a private Google Apps Script endpoint, which appends a row to
-  // our newsletter-signups sheet. The shared-secret token is checked on the
-  // server side; requests without it are rejected.
+  // our newsletter-signups sheet.
+  //
+  // NOTE: the token below is visible in client-side source and is therefore
+  // NOT a secret. It only deters casual writes. Do not treat it as auth.
   var endpoint = 'https://script.google.com/macros/s/AKfycbxYRR7g_FzMmaPbpyRhQHOpQ6WGL84ZPeYsjs9kFyZnrWCzGlxp9UH2_GO0TJdnuMMeSw/exec';
   var payload = {
     token: 'pgp_k7m2xq9vn4bp8jr3zwl5_2026',
@@ -1203,7 +1274,8 @@ function resetModalToForm() {
   if (sel) sel.value = getSavedClient();
 }
 
-// Use event delegation for Send Email buttons to avoid quote-escaping issues in onclick
+// Event delegation for Send Email buttons — avoids quote-escaping hazards with
+// names containing apostrophes (e.g. "Matthew J. O'Shea") or quotes.
 document.addEventListener('click', function(e) {
   var btn = e.target.closest('.send-email-btn[data-rep]');
   if (btn) {
@@ -1252,9 +1324,12 @@ function switchLayerFromSelect(layer) {
   function maxH() { return Math.round(window.innerHeight * 0.9); }
   function isMobile() { return window.matchMedia('(max-width: 899px)').matches; }
 
+  // NOTE: `map` is declared with `let` at script top level, so it is NOT a
+  // property of `window`. The old `window.map` check was always undefined and
+  // this resize nudge never actually fired.
   function nudgeMap() {
     setTimeout(function() {
-      if (window.map && window.google && google.maps) {
+      if (map && window.google && google.maps) {
         google.maps.event.trigger(map, 'resize');
       }
     }, 260);
@@ -1335,7 +1410,7 @@ function switchLayerFromSelect(layer) {
   // On orientation change / resize, reset any inline height
   window.addEventListener('resize', function() {
     sidebar.style.height = '';
-    if (window.map && google && google.maps) google.maps.event.trigger(map, 'resize');
+    if (map && window.google && google.maps) google.maps.event.trigger(map, 'resize');
   });
 })();
 </script>
